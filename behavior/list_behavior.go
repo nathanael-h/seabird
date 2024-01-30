@@ -3,6 +3,7 @@ package behavior
 import (
 	"context"
 	"log"
+	"runtime"
 	"time"
 
 	"github.com/getseabird/seabird/util"
@@ -13,7 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,7 +34,12 @@ func (b *ClusterBehavior) NewListBehavior() *ListBehavior {
 		Objects:         observer.NewProperty[[]client.Object](nil),
 	}
 
-	onChange(listView.SelectedResource, listView.onSelectedResourceChange)
+	stop := make(chan struct{})
+	runtime.SetFinalizer(&listView, func(_ *ListBehavior) {
+		close(stop)
+	})
+
+	onChange(listView.SelectedResource, stop, listView.onSelectedResourceChange)
 
 	return &listView
 }
@@ -52,7 +58,7 @@ func (b *ListBehavior) onSelectedResourceChange(resource *metav1.APIResource) {
 
 	gvr := util.ResourceGVR(resource)
 
-	var obj runtime.Object
+	var obj kruntime.Object
 	switch gvr.String() {
 	case corev1.SchemeGroupVersion.WithResource("pods").String():
 		obj = &corev1.Pod{}

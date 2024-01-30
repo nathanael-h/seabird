@@ -37,6 +37,11 @@ func NewDetailView(parent *gtk.Window, behavior *behavior.DetailBehavior) *Detai
 		expanded:       map[string]bool{},
 	}
 
+	stop := make(chan struct{})
+	d.ConnectDestroy(func() {
+		close(stop)
+	})
+
 	stack := adw.NewViewStack()
 
 	d.prefPage = adw.NewPreferencesPage()
@@ -56,10 +61,10 @@ func NewDetailView(parent *gtk.Window, behavior *behavior.DetailBehavior) *Detai
 	content.Append(header)
 	content.Append(stack)
 
-	onChange(d.behavior.Yaml, func(yaml string) {
+	onChange(d.behavior.Yaml, stop, func(yaml string) {
 		d.sourceBuffer.SetText(string(yaml))
 	})
-	onChange(d.behavior.Properties, d.onPropertiesChange)
+	onChange(d.behavior.Properties, stop, d.onPropertiesChange)
 
 	return &d
 }

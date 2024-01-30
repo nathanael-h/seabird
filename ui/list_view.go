@@ -38,6 +38,11 @@ func NewListView(parent *gtk.Window, behavior *behavior.ListBehavior) *ListView 
 	}
 	l.AddCSSClass("view")
 
+	stop := make(chan struct{})
+	l.ConnectDestroy(func() {
+		close(stop)
+	})
+
 	header := adw.NewHeaderBar()
 	header.AddCSSClass("flat")
 	header.SetShowEndTitleButtons(false)
@@ -60,8 +65,8 @@ func NewListView(parent *gtk.Window, behavior *behavior.ListBehavior) *ListView 
 	sw.SetChild(vp)
 	l.Append(sw)
 
-	onChange(l.behavior.Objects, l.onObjectsChange)
-	onChange(l.behavior.SearchFilter, l.onSearchFilterChange)
+	onChange(l.behavior.Objects, stop, l.onObjectsChange)
+	onChange(l.behavior.SearchFilter, stop, l.onSearchFilterChange)
 
 	return &l
 }

@@ -38,15 +38,20 @@ func NewApplication(version string) (*Application, error) {
 		return nil, err
 	}
 
-	adw.StyleManagerGetDefault().SetColorScheme(b.Preferences.Value().ColorScheme)
-	onChange(b.Preferences, func(p behavior.Preferences) {
-		adw.StyleManagerGetDefault().SetColorScheme(adw.ColorScheme(p.ColorScheme))
-	})
-
 	a := Application{
 		Application: adw.NewApplication("dev.skynomads.Seabird", gio.ApplicationFlagsNone),
 		version:     version,
 	}
+
+	stop := make(chan struct{})
+	a.ConnectShutdown(func() {
+		close(stop)
+	})
+
+	adw.StyleManagerGetDefault().SetColorScheme(b.Preferences.Value().ColorScheme)
+	onChange(b.Preferences, stop, func(p behavior.Preferences) {
+		adw.StyleManagerGetDefault().SetColorScheme(adw.ColorScheme(p.ColorScheme))
+	})
 
 	provider := gtk.NewCSSProvider()
 	theme, _ := style.FS.ReadFile("theme.css")

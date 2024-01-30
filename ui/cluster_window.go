@@ -87,6 +87,7 @@ func (w *ClusterWindow) createActions() {
 	disconnect.ConnectActivate(func(_ *glib.Variant) {
 		w.ActivateAction("newWindow", nil)
 		w.Close()
+		w.Destroy()
 	})
 	w.AddAction(disconnect)
 	w.Application().SetAccelsForAction("win.disconnect", []string{"<Ctrl>Q"})

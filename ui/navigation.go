@@ -32,6 +32,11 @@ func NewNavigation(b *behavior.ClusterBehavior) *Navigation {
 	n.SetSizeRequest(225, 200)
 	n.SetVExpand(true)
 
+	stop := make(chan struct{})
+	n.ConnectDestroy(func() {
+		close(stop)
+	})
+
 	header := adw.NewHeaderBar()
 	title := gtk.NewLabel(b.ClusterPreferences.Value().Name)
 	title.AddCSSClass("heading")
@@ -72,11 +77,11 @@ func NewNavigation(b *behavior.ClusterBehavior) *Navigation {
 	addFavouriteBin := adw.NewBin()
 	content.Append(addFavouriteBin)
 
-	onChange(b.ClusterPreferences, func(prefs behavior.ClusterPreferences) {
+	onChange(b.ClusterPreferences, stop, func(prefs behavior.ClusterPreferences) {
 		favouritesBin.SetChild(n.createFavourites(prefs))
 	})
 
-	onChange(b.SelectedResource, func(res *metav1.APIResource) {
+	onChange(b.SelectedResource, stop, func(res *metav1.APIResource) {
 		if n.spinner != nil {
 			n.spinner.Parent().(*gtk.Box).Remove(n.spinner)
 			n.spinner = nil

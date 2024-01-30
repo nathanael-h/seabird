@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -15,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime"
+	kruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
@@ -33,6 +34,7 @@ type DetailBehavior struct {
 func (b *ClusterBehavior) NewRootDetailBehavior() *DetailBehavior {
 	db := b.NewDetailBehavior()
 	b.RootDetailBehavior = db
+
 	return db
 }
 
@@ -44,7 +46,12 @@ func (b *ClusterBehavior) NewDetailBehavior() *DetailBehavior {
 		Properties:      observer.NewProperty[[]ObjectProperty](nil),
 	}
 
-	onChange(d.SelectedObject, d.onObjectChange)
+	stop := make(chan struct{})
+	runtime.SetFinalizer(&d, func(_ *DetailBehavior) {
+		close(stop)
+	})
+
+	onChange(d.SelectedObject, stop, d.onObjectChange)
 
 	return &d
 }
@@ -57,7 +64,7 @@ func (b *DetailBehavior) onObjectChange(object client.Object) {
 	}
 
 	codec := unstructured.NewJSONFallbackEncoder(serializer.NewCodecFactory(b.scheme).LegacyCodec(b.scheme.PreferredVersionAllGroups()...))
-	encoded, err := runtime.Encode(codec, object)
+	encoded, err := kruntime.Encode(codec, object)
 	if err != nil {
 		b.Yaml.Update(fmt.Sprintf("error: %v", err))
 	} else {

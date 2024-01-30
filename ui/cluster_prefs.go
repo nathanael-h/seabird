@@ -43,6 +43,11 @@ func NewClusterPrefPage(parent *gtk.Window, b *behavior.Behavior, active observe
 		active:         active,
 	}
 
+	stop := make(chan struct{})
+	p.ConnectDestroy(func() {
+		close(stop)
+	})
+
 	header := adw.NewHeaderBar()
 	header.SetShowEndTitleButtons(false)
 	header.PackEnd(p.createSaveButton())
@@ -50,7 +55,7 @@ func NewClusterPrefPage(parent *gtk.Window, b *behavior.Behavior, active observe
 	box.Append(content)
 	content.SetChild(p.createContent())
 
-	onChange(p.active, func(prefs behavior.ClusterPreferences) {
+	onChange(p.active, stop, func(prefs behavior.ClusterPreferences) {
 		p.name.SetText(prefs.Name)
 		p.host.SetText(prefs.Host)
 		p.cert.SetText(string(prefs.TLS.CertData))

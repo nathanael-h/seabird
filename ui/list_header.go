@@ -20,6 +20,11 @@ func NewListHeader(b *behavior.ListBehavior) *ListHeader {
 	box.SetMarginStart(12)
 	box.SetMarginEnd(12)
 
+	stop := make(chan struct{})
+	box.ConnectDestroy(func() {
+		close(stop)
+	})
+
 	// TODO expression triggers G_IS_OBJECT (object) assertion fails
 	kind := gtk.NewDropDown(gtk.NewStringList([]string{}), gtk.NewPropertyExpression(gtk.GTypeStringObject, nil, "string"))
 	kind.SetEnableSearch(true)
@@ -43,7 +48,7 @@ func NewListHeader(b *behavior.ListBehavior) *ListHeader {
 			b.SearchText.Update(entry.Text())
 		}
 	})
-	onChange(b.SearchText, func(txt string) {
+	onChange(b.SearchText, stop, func(txt string) {
 		if txt != entry.Text() {
 			entry.SetText(txt)
 		}
@@ -66,7 +71,7 @@ func NewListHeader(b *behavior.ListBehavior) *ListHeader {
 		b.SearchFilter.Update(behavior.NewSearchFilter(entry.Text()))
 	})
 
-	onChange(b.SelectedResource, func(res *metav1.APIResource) {
+	onChange(b.SelectedResource, stop, func(res *metav1.APIResource) {
 		var idx uint
 		for i, r := range b.Resources {
 			if util.ResourceEquals(&r, res) {
